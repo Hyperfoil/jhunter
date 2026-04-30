@@ -9,10 +9,22 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Entry point for change point detection in time series data.
+ * Provides Hunter's two-step (split/merge) algorithm and the original Matteson-James algorithm.
+ */
 public final class Analysis {
 
     private Analysis() {}
 
+    /**
+     * Detects change points using Hunter's two-step algorithm (recommended).
+     * Slides a window across the series to find candidates, then filters with strict significance testing.
+     *
+     * @param series the time series data (must have at least 3 elements)
+     * @param options detection parameters (window size, p-value threshold, minimum magnitude)
+     * @return change points sorted by index, or empty list if none found
+     */
     public static List<ChangePoint> computeChangePoints(double[] series, AnalysisOptions options) {
         if (series.length < 3) return List.of();
 
@@ -20,6 +32,15 @@ public final class Analysis {
         return merge(weakPoints, series, options.maxPvalue(), options.minMagnitude());
     }
 
+    /**
+     * Detects change points using the original Matteson-James E-Divisive algorithm with permutation testing.
+     * More theoretically sound but O(n² x permutations) per change point.
+     *
+     * @param series the time series data (must have at least 3 elements)
+     * @param maxPvalue significance threshold for permutation testing
+     * @param seed random seed for reproducible permutations
+     * @return change points sorted by index, or empty list if none found
+     */
     public static List<ChangePoint> computeChangePointsOriginal(double[] series, double maxPvalue, long seed) {
         if (series.length < 3) return List.of();
 
@@ -70,7 +91,7 @@ public final class Analysis {
         List<ChangePoint> points = new ArrayList<>(weakPoints);
 
         while (!points.isEmpty()) {
-            // Find the weakest point (highest pvalue)
+            // Find the point that fails thresholds and has the smallest magnitude
             ChangePoint weakest = null;
             int weakestIdx = -1;
             for (int i = 0; i < points.size(); i++) {
