@@ -22,7 +22,12 @@ public abstract class SignificanceTester {
     public static int[][] getIntervals(List<ChangePoint> changePoints, int seriesLength) {
         List<Integer> boundaries = new ArrayList<>();
         boundaries.add(0);
+        int prev = -1;
         for (ChangePoint cp : changePoints) {
+            if (cp.index() <= prev) {
+                throw new IllegalArgumentException("Change points must be sorted by index");
+            }
+            prev = cp.index();
             boundaries.add(cp.index());
         }
         boundaries.add(seriesLength);

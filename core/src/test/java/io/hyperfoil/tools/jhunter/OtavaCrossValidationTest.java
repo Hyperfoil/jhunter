@@ -6,6 +6,7 @@ import io.hyperfoil.tools.jhunter.significance.TTestSignificanceTester;
 import io.hyperfoil.tools.jhunter.significance.SignificanceTester;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -121,5 +122,40 @@ class OtavaCrossValidationTest {
         ChangePoint cp = tester.test(candidate, shifted, intervals);
         assertTrue(tester.isSignificant(cp), "shifted data should be significant");
         assertTrue(cp.pvalue() < 0.001, "pvalue should be < 0.001, was " + cp.pvalue());
+    }
+
+    @Test
+    void singlePermutationComputesPvalue() {
+        // Matches test_permutation_calculation — verifies single-permutation mechanics
+        PairDistanceCalculator calc = new PairDistanceCalculator(SEQUENCE);
+        ChangePoint candidate = calc.getCandidateChangePoint(0, SEQUENCE.length);
+
+        PermutationSignificanceTester tester = new PermutationSignificanceTester(0.05, 1, 42);
+        int[][] intervals = {{0, SEQUENCE.length}};
+        ChangePoint result = tester.test(candidate, SEQUENCE, intervals);
+
+        // With 1 permutation: pvalue = (extreme + 1) / (1 + 1) = 0.5 or 1.0
+        assertTrue(result.pvalue() == 0.5 || result.pvalue() == 1.0,
+                "single permutation pvalue should be 0.5 or 1.0, was " + result.pvalue());
+    }
+
+    @Test
+    void getIntervalsRequiresSortedChangePoints() {
+        // Matches test_get_intervals_requires_sorted_change_points
+        ChangePoint cp5 = new ChangePoint(5, 1.0, 0.001, 1.0, 2.0, 0.1, 0.1);
+        ChangePoint cp10 = new ChangePoint(10, 1.0, 0.001, 1.0, 2.0, 0.1, 0.1);
+        ChangePoint cp15 = new ChangePoint(15, 1.0, 0.001, 1.0, 2.0, 0.1, 0.1);
+
+        // Sorted change points should work
+        int[][] intervals = SignificanceTester.getIntervals(Arrays.asList(cp5, cp10, cp15), 20);
+        assertEquals(4, intervals.length);
+        assertArrayEquals(new int[]{0, 5}, intervals[0]);
+        assertArrayEquals(new int[]{5, 10}, intervals[1]);
+        assertArrayEquals(new int[]{10, 15}, intervals[2]);
+        assertArrayEquals(new int[]{15, 20}, intervals[3]);
+
+        // Unsorted change points should throw
+        assertThrows(IllegalArgumentException.class,
+                () -> SignificanceTester.getIntervals(Arrays.asList(cp10, cp5, cp15), 20));
     }
 }
